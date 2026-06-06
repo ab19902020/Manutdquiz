@@ -222,6 +222,16 @@
 
         const TIMER_SECONDS = 15;
 
+        // Unbiased Fisher-Yates shuffle (returns a new array)
+        const shuffle = (arr) => {
+          const a = [...arr];
+          for (let i = a.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [a[i], a[j]] = [a[j], a[i]];
+          }
+          return a;
+        };
+
         // --- PERSISTENCE HELPERS ---
         const load = (key, fallback) => {
           try {
@@ -387,7 +397,17 @@
               (category === 'All' || q.cat === category) &&
               (difficulty === 'All' || q.diff === difficulty)
             );
-            const shuffled = [...pool].sort(() => 0.5 - Math.random()).slice(0, quizLength);
+            const picked = shuffle(pool).slice(0, quizLength);
+            // Shuffle each question's options so the correct answer isn't always
+            // in the same slot, and recompute where the correct answer landed.
+            const shuffled = picked.map(q => {
+              const order = shuffle(q.options.map((opt, i) => ({ opt, i })));
+              return {
+                ...q,
+                options: order.map(o => o.opt),
+                correct: order.findIndex(o => o.i === q.correct),
+              };
+            });
 
             setActiveQuestions(shuffled);
             setCurrentIndex(0);
